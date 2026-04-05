@@ -1,0 +1,55 @@
+pipeline{
+    agent any
+    environment{
+        SONAR_HOME= tool "Sonar"
+    }
+    stages{
+        stage("Clone Code From GitHub"){
+            steps{
+                git url: "https://github.com/hinaakram027/3-tier-app-devops-project.git", branch: "main"
+            }
+        }
+        stage("SonarQube Quality Analysis"){
+            steps{
+                withSonarQubeEnv("Sonar"){
+                    sh "$SONAR_HOME/bin/sonar-scanner -Dsonar.projectName=3-tier-app-devops-project -Dsonar.projectKey=3-tier-app-devops-project"
+                }
+            }
+        }
+        stage("Trivy File Scan"){
+            steps{
+                sh "trivy fs --format table -o trivy-fs-report.html ."
+            }
+        }
+        stage("Build Backend Image"){
+            steps{
+                dir('Application-Code/backend') {
+                    sh "docker build -t hinaar/backendappimage1.1 ."
+                }
+            }
+        }
+        stage("Build Frontend Image"){
+            steps{
+                dir('Application-Code/frontend'){
+                    sh "docker build -t hinaar/frontendappimage1.1 ."
+                }
+            }
+        }
+        stage("Push Images DockerHub"){
+            steps{
+                withCredentials([string(credentialsId: 'hinaardocker', variable: 'hinaardocker')]){
+                    sh "docker login -u hinaar -p ${hinaardocker}"
+                }
+                sh "docker push hinaar/backendappimage1.1"
+                sh "docker push hinaar/frontendappimage1.1"
+            }
+        }
+        stage("Deploy App on EKS"){
+            steps{
+                sh "aws eks update-kubeconfig --name complete-project --region us-east-2"
+                sh "kubectl get ns"
+                sh "kubectl apply -f Manifest.yaml"
+            }
+        }
+    }
+}
