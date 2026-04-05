@@ -1,0 +1,238 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: api
+  namespace: default
+  labels: 
+    role: api
+    env: demo
+spec: 
+  replicas: 2
+  selector: 
+    matchLabels:
+      role: api
+  template:
+    metadata:
+      labels:
+        role: api
+    spec:
+      containers:
+      - name: api
+        image: hinaar/backendappimage1.1:latest
+        imagePullPolicy: Always
+        env:
+          - name: MONGO_CONN_STR
+            value: mongodb://mongodb-svc:27017/todo?directConnection=true
+          - name: MONGO_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: mongo-sec
+                key: username
+          - name: MONGO_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mongo-sec
+                key: password
+        ports:
+        - containerPort: 3500
+        livenessProbe: 
+          httpGet:
+            path: /ok
+            port: 3500
+          initialDelaySeconds: 2
+          periodSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /ok
+            port: 3500
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: default
+spec: 
+  ports:
+  - port: 3500
+    protocol: TCP
+  type: LoadBalancer
+  selector:
+    role: api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: default
+  labels:
+    role: frontend
+    env: demo
+spec: 
+  replicas: 1
+  selector:
+    matchLabels: 
+      role: frontend
+  template:
+    metadata:
+      labels:
+        role: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: hinaar/frontendappimage1.1:latest
+        imagePullPolicy: Always
+        env:
+          - name: REACT_APP_BACKEND_URL
+            value: "http://backend.amanpathakdevops.study/api/tasks"
+        ports:
+        - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata: 
+  name: frontend
+  namespace: default
+spec:
+  ports:
+  - port: 3000
+    protocol: TCP
+  type: LoadBalancer
+  selector:
+    role: frontend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  namespace: default
+  name: mongodb
+spec: 
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels: 
+        app: mongodb
+    spec: 
+      containers:
+      - name: mon
+        image: mongo:4.4.6
+        command:
+            - "numactl"
+            - "--interleave=all"
+            - "mongod"
+            - "--wiredTigerCacheSizeGB"
+            - "0.1"
+            - "--bind_ip"
+            - "0.0.0.0"
+        ports:
+        - containerPort: 27017
+        env: 
+          - name: MONGO_INITDB_ROOT_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: mongo-sec
+                key: username
+          - name: MONGO_INITDB_ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mongo-sec
+                key: password
+        volumeMounts:
+          - name: mongo-volume
+            mountPath: /data/db
+      volumes: 
+      - name: mongo-volume
+        persistentVolumeClaim:
+          claimName: mongo-volume-claim
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mongo-pv
+  namespace: default
+spec:
+  capacity: 
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /data/db
+-----
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongo-volume-claim
+  namespace: default
+spec: 
+  accessModes:  
+    - ReadWriteOnce
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Secret
+metadata: 
+  namespace: default
+  name: mongo-sec
+type: Opaque
+data:  
+  password: cGFzc3dvcmQxMjM=   #Three-Tier-Project
+  username: YWRtaW4= #admin
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: default
+  name: mongodb-svc
+spec:
+  selector:
+    app: mongodb
+  ports:
+  - name: mongodb-svc
+    protocol: TCP
+    port: 27017
+    targetPort: 27017
+    ---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mainlb
+  namespace: default
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+spec:
+  ingressClassName: alb
+  rules:
+    - host: backend.amanpathakdevops.study
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:   
+                  number: 3500
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port: 
+                  number: 3000
+      
+
+
+
+
+          
