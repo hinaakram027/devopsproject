@@ -144,6 +144,90 @@ kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath="{.data.pas
 ```
 <img width="1365" height="678" alt="argocd main page" src="https://github.com/user-attachments/assets/73036e42-f5bd-4212-a9c8-aa5a759e54f9" />
 
+## Step 11: Install Helm
+```
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+```
+```
+chmod 700 get_helm.sh
+```
+```
+./get_helm.sh
+ DESIRED_VERSION=v3.8.2 bash get_helm.sh
+ curl -L https://git.io/get_helm.sh | bash -s -- --version v3.8.2
+```
+```
+helm version
+```
+## Step 11: Add Helm Chart to local Client
+```
+helm repo add stable https://charts.helm.sh/stable
+```
+## Step 12: Add Prometheus Helm Repository
+```
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+```
+```
+kubectl create namespace prometheus
+```
+## Step 13: Install Prometheus using Helm 
+```
+helm install stable prometheus-community/kube-prometheus-stack -n prometheus
+```
+## Step 14: Expose Prometheus and Grafana to the External World through LoadBalancer Edit the Helm File
+```
+kubectl edit svc stable-kube-prometheus-sta-prometheus -n prometheus
+```
+## Step 15: Access LoadBalancer
+```
+kubectl get svc -n prometheus
+
+<img width="1364" height="674" alt="access prometheus through load balancer" src="https://github.com/user-attachments/assets/04806562-293e-40eb-bdb4-484c7b83dd26" />
+
+```
+## Step 16: Edit Grafana helm Chart for LoadBalancer
+```
+kubectl edit svc stable-grafana -n prometheus
+```
+## Step 17: Access LoadBalancer
+```
+kubectl get svc -n prometheus
+```
+## Step 18: Grafana Password Decode
+```
+kubectl get secret --namespace prometheus stable-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+```
+<img width="1365" height="623" alt="grafana password access" src="https://github.com/user-attachments/assets/67cabe94-d01f-4894-8bbd-5aeee63cf409" />
+
+<img width="1365" height="637" alt="grafana welcome dshboard" src="https://github.com/user-attachments/assets/8ab7ac40-e60e-47b1-bc7f-4cda71fd5872" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
