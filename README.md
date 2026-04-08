@@ -181,10 +181,10 @@ kubectl edit svc stable-kube-prometheus-sta-prometheus -n prometheus
 ## Step 15: Access LoadBalancer
 ```
 kubectl get svc -n prometheus
+```
 
 <img width="1364" height="674" alt="access prometheus through load balancer" src="https://github.com/user-attachments/assets/04806562-293e-40eb-bdb4-484c7b83dd26" />
 
-```
 ## Step 16: Edit Grafana helm Chart for LoadBalancer
 ```
 kubectl edit svc stable-grafana -n prometheus
